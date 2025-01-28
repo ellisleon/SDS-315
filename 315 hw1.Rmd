@@ -1,0 +1,208 @@
+---
+title: "HW2"
+author: "Leon Ellis"
+date: "2025-01-28"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r,echo=FALSE, warning=FALSE, message=FALSE}
+library(ggplot2)
+library(tidyverse)
+library(kableExtra)
+
+profs = read.csv("profs.csv")
+bikeshare = read.csv("bikeshare.csv")
+metro = read.csv("capmetro_UT.csv")
+billboard = read.csv("billboard.csv")
+
+```
+
+lae996
+
+https://github.com/ellisleon/SDS-315
+
+## **Problem 1: Beauty, or not, in the classroom**
+
+```{r, echo=FALSE}
+ggplot(profs,aes(x=eval))+
+  geom_histogram(fill=("cornflowerblue"),color="gray3",binwidth=.25)+
+  labs(title="Distribution of Professor Evaluations", x="Average Score",y="Frequency")+
+  theme_minimal()
+```
+
+The graph shows a mean professor evaluation of `r round(mean(profs$eval),2)`. The standard deviation is `r round(sd(profs$eval),2)`.
+
+
+
+```{r, echo=FALSE}
+ggplot(profs, aes(x=eval, fill=native))+
+  geom_boxplot()+
+  facet_wrap(~ native)+
+  labs(title="Distributions of Evaluations for Native and Non-Native English Speakers", x="Average Score", y="Frequency")+
+  scale_fill_manual(values=c("yes"="indianred3","no"="cornflowerblue"),name="Native English Speaker?",labels=c("Non-Native Speaker","Native Speaker"))+
+  theme_minimal()+
+  theme(strip.text = element_blank())
+```
+
+This plot shows that the mean evaluation for native English speaking professors is higher than that of their non-native speaker counterparts. Native English speaking professors have a mean evaluation of `r round(mean(subset(profs, native=="yes")$eval),2)` while non-native English speaking professors have a mean evaluation of `r round(mean(subset(profs, native=="no")$eval),2)`, a `r round(mean(subset(profs, native=="yes")$eval),2)- round(mean(subset(profs, native=="no")$eval),2)` point difference.
+
+```{r, echo=FALSE}
+ggplot(profs, aes(x=eval, fill=gender))+
+  geom_histogram(bins=10, color="gray3")+
+  facet_wrap(~ gender, nrow=2)+
+  labs(title="Distribution of Evaluations for Male and Female Professors",x="Average Score",y="Frequency")+
+  scale_fill_manual(values=c("female"="indianred3","male"="cornflowerblue"),name="Gender",labels=c("Female","Male"))+
+  theme_minimal()+
+  theme(strip.text = element_blank())
+```
+
+Similarly, male professors on average receive better evaluations than the female counterparts. The mean for men is `r round(mean(subset(profs, gender=="male")$eval),2)`, and the mean for women is `r round(mean(subset(profs, gender=="female")$eval),2)`, a `r round(mean(subset(profs, gender=="male")$eval),2)-round(mean(subset(profs, gender=="female")$eval),2)` point difference.
+
+```{r, echo=FALSE}
+ggplot(profs, aes(x=beauty, y=eval))+
+  geom_point(fill="cornflowerblue")+
+  labs(title="Attractiveness Rating vs. Evaluation",x="Attractiveness Rating",y="Average Score")
+```
+
+This plot shows little to no correlation between a professor's evaluation and their attractiveness rating. The correlation is `r round(cor(profs$beauty, profs$eval),2)`.
+
+
+## **Problem 2: bike sharing**
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+average_totals = bikeshare %>%
+  group_by(hr) %>%
+  summarize(avg_total=mean(total))
+
+ggplot(average_totals, aes(x=hr,y=avg_total))+
+  geom_line(color="darkblue", linewidth=1.5)+
+  labs(title="Average Rentals by Hour", x="Hour", y="Average Number of Rentals")+
+  theme_minimal()
+```
+
+The graph shows that the number of bikeshare rentals have peaks at around 8 am and 5 pm. The number of rentals is nearly zero just before 5 am and quickly rises to over 350 rentals at 8 am as people begin their commutes for the day. The typical work hours of around 8 am to 5 pm see a slight dip with another increase around noon, when employees commonly have their lunch break. Another steady decrease is seen after 5 pm as people return to their homes after work. 
+
+Ridership is correlated with common working hours. 
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+average_totals_B = bikeshare %>%
+  group_by(hr, workingday) %>%
+  summarize(avg_total=mean(total))
+
+
+ggplot(average_totals_B, aes(x=hr,y=avg_total))+
+  geom_line(color = "darkblue", linewidth=1.5)+
+  facet_wrap(~ workingday, labeller = labeller(workingday = c("0" = "Non-Working Day", "1" = "Working Day")))+
+  labs(title="Average Rentals by Hour on Working and Non-working Days", x="Hour", y="Average Number of Rentals")+
+  theme_minimal()
+  
+```
+
+This graph compares the average rentals by hour on working days and weekends. The graph for working days follows the general pattern of the previous graph but the weekend graph shows one peak and trough at around 12 pm and 4:30 am, respectively. The weekend also sees fewer average rentals as more people are likely to stay home.
+
+On weekends, people are more likely to rent bikes when the sun is out compared to work days where they may be stuck inside.
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+average_totals_C = bikeshare %>%
+  group_by(hr, workingday,weathersit) %>%
+  summarize(avg_total=mean(total))%>%
+  filter(hr == 9)
+
+ggplot(average_totals_C, aes(x=as.factor(weathersit),y=avg_total,fill=as.factor(weathersit)))+
+  geom_bar(stat = "identity")+
+  facet_wrap(~ workingday, labeller = labeller(workingday = c("0" = "Non-Working Day", "1" = "Working Day")))+
+  labs(title = "Average Ridership at 9 AM by Weather Condition and Working Day", x="Weather Condition", y ="Average Riders")+
+  theme_minimal()+
+  scale_fill_manual(values=c("1"="indianred3","2"="cornflowerblue", "3"="green4"),name="Weather Condition",labels=c("Clear","Mist","Light snow, rain, thunderstorms"))
+```
+
+This graph shows the relationship between average ridership, the weather, and whether the day is a weekend or working day. For all weather conditions, there are more people using bikeshare on working days. On working days, the number of bikeshare rentals on clear days is about equal to the number on misty days. Days with light rain, light snow, and/or thunderstorms see only about 60% of bikeshare rentals of clear days. In contrast, non-working days see a greater difference in the number of rentals by weather condition. Like working days, clear days see the most rentals, but misty days see less than 90% of those rental figures.
+
+On weekdays, people are more likely to rent a bike regardless of weather condition since they are typically headed to work.
+
+## **Problem 3: Capitol Metro UT Ridership**
+
+```{r, echo=FALSE}
+# Recode the categorical variables in sensible, rather than alphabetical, order
+metro = mutate(metro, day_of_week = factor(day_of_week, levels=c("Mon", "Tue", "Wed","Thu", "Fri", "Sat", "Sun")), month = factor(month,levels=c("Sep", "Oct","Nov")))
+```
+
+```{r, warning=FALSE, message=FALSE, echo=FALSE}
+metro_B = metro %>%
+  group_by(hour_of_day, day_of_week, month)%>%
+  summarize(avg_boardings=mean(boarding))
+
+ggplot(metro_B, aes(x=hour_of_day, y=avg_boardings, color=month))+
+  geom_line()+
+  facet_wrap(~ day_of_week)+
+  labs(title = "Average Boardings by Hour", x="Hour of Day", y="Average Boardings")
+```
+
+The graph shows that across all months Saturdays and Sundays see the least number of average boardings across all hours of the day. This is most likely because Monday through Friday see the most students boarding the buses to attend classes on campus and later to return back to their homes. Across Monday through Friday, the hour of peak boardings remains relatively similar at around 4 pm. It is common for students to finish their final class of the day around this time. Mondays in September likely see fewer boardings since Labor Day typically gives students a Monday off. Similarly, Wednesday, Thursday, and Friday see a dip since Thanksgiving break sees many students away from campus and not attending any classes.
+
+```{r, echo=FALSE, fig.width=8, fig.height=8, warning=FALSE}
+
+ggplot(metro, aes(x=temperature, y=boarding, color=weekend))+
+  geom_point()+
+  facet_wrap(~ hour_of_day)+
+  labs(title="Boarding vs. Temperature", x="Temperature (in degrees F)", y="Number Boarded")+
+  theme_minimal()+
+  scale_color_manual(values=c("weekday"="indianred3","weekend"="cornflowerblue"),name="Weekend or Weekday",labels=c("Weekday","Weekend"))
+  
+```
+
+For each hour, fewer people board the buses at lower temperatures on weekends than on weekdays. Interestingly, there is a fairly consistent number of bus riders across all hours and temperatures on weekends. This is likely in part because they are less likely to be bound to a fixed schedule.
+
+## **Wrangling the Billboard Top 100**
+
+```{r, echo=FALSE, message=FALSE}
+billboard_B = billboard %>%
+  group_by(song, performer) %>%
+  summarize(count = n())%>%
+  arrange(desc(count))%>%
+  head(10)%>%
+  rename(Song=song, Performer=performer, Count=count)
+
+billboard_B%>%
+  kable('html')%>%
+  kable_styling(full_width=TRUE)
+```
+
+The table shows that the song that has spent the most time on the chart is Radioactive by the rock band Imagine Dragons.The song was released in 2012.
+
+```{r, echo=FALSE}
+billboard_C = billboard %>%
+  filter(1958<year & year<2021)%>%
+  group_by(year)%>%
+  summarize(unique_songs = length(unique(song_id)))
+
+ggplot(billboard_C, aes(x=year, y= unique_songs))+
+  geom_line(color = "darkblue", linewidth=1.5)+
+  labs(title="Number of Unique Songs in Billboard Top 100 by Year", x="Year",y="Unique Songs")+
+  theme_minimal()
+```
+The graph shows that the most unique songs appeared on the Billboard Top 100 in the mid-1960s.This reflects the shift in music around the time with rock bands like the Beatles and Rolling Stones becoming popular while Motown music remained massive. After the 1960s, the number of unique songs steadily declined until the early 2000s. Since, there has been a rise with 2020 reaching nearly the same number of unique songs as the 1960s.
+
+```{r, echo=FALSE}
+billboard_D = billboard %>%
+  filter(weeks_on_chart>=10)%>%
+  distinct(performer, song)%>%
+  group_by(performer)%>%
+  summarize(ten_week_hits=n())%>%
+  filter(ten_week_hits>=30)%>%
+  arrange(desc(ten_week_hits))
+  
+ggplot(billboard_D, aes(x=performer, y=ten_week_hits))+
+  geom_bar(stat="identity", fill="cornflowerblue")+
+  labs(title="Performers with Most Ten Week Hits",x="Performer",y="Ten Week Hits")+
+  coord_flip()
+
+```
+
+The graph shows that Elton John is the artist with the most ten week hits with over 50. In second place is Madonna and in third is country artist Kenny Chesney. Interestingly, seven of the nineteen artists would typically be considered country. 
