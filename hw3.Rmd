@@ -1,0 +1,203 @@
+---
+title: "HW3"
+author: "Leon Ellis"
+date: "2025-02-06"
+output: 
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(mosaic)
+library(ggplot2)
+
+gas_prices = read.csv("gasprices.csv")
+sclass = read.csv("sclass.csv")
+pilot = read.csv("nbc_pilotsurvey.csv")
+ebay = read.csv("ebay.csv")
+```
+
+### **Problem 1**
+
+##### **Claim A: Gas stations charge more if they lack direct competition in sight.** 
+
+```{r, echo=FALSE}
+avg_price_with_comp = round(mean(subset(gas_prices, Competitors=="Y")$Price),4)
+avg_price_no_comp = round(mean(subset(gas_prices, Competitors=="N")$Price),4)
+
+ggplot(gas_prices, aes(x=Price, fill=Competitors))+
+  geom_histogram(bins=10, color="gray3")+
+  facet_wrap(~ Competitors, nrow=2)+
+  labs(title="Distribution of Prices Based on Distance of Competitors",x="Average Price",y="Frequency")+
+  scale_x_continuous(labels = function(x) sprintf("%.2f", x)) + #makes the scale x have two decimals
+  scale_fill_manual(values=c("Y"="indianred3","N"="cornflowerblue"),name="Distance of Competitors",labels=c("Not in Sight","In Sight"))+
+  theme_minimal()+
+  theme(strip.text = element_blank())
+
+comp_t_test = t.test(Price ~ Competitors, data=gas_prices)
+comp_U = round(comp_t_test$conf.int[2],2)
+comp_L = round(comp_t_test$conf.int[1],2)
+```
+
+On average, the gas stations in the data set charge more if they lack direct competition in sight. The mean price at these gas stations is `r avg_price_no_comp` while the mean price from gas stations with competitors in sight is `r avg_price_with_comp`, a difference of about `r (round(avg_price_no_comp,2) - round(avg_price_with_comp, 2))*100` cents. Using a two-sample T-test, we find that the true difference between gas prices in or out of sight of competitors is somewhere `r comp_L` and `r comp_U`, with 95% confidence.
+
+Even though the average price is slightly higher when competitors are out of sight in the data set, the interval shows that the true difference in prices between the two groups including those outside the data set is not statistically significant since the lower bounds is negative and the upper bounds is positive at the 95% confidence level.
+
+
+##### **Claim B: The richer the area, the higher the gas prices.**
+
+```{r, echo=FALSE, message=FALSE, include=FALSE}
+cor.test(gas_prices$Price, gas_prices$Income)
+```
+
+The true correlation between the price of gasoline (in gallons) and the average income in the gas station's zip code is between .22 and .55, with 95% confidence. This indicates a moderate, positive relationship between the two factors. 
+
+Since the correlation is moderate, it is best to check the relationship between price and other variables before making any definitive statements on whether richer areas have higher gas prices.
+
+
+##### **Claim C: Gas stations at stoplights charge more.**
+
+```{r, echo=FALSE}
+stop_t_test = t.test(Price ~ Stoplight, data=gas_prices)
+stop_U = round(stop_t_test$conf.int[2],2)
+stop_L = round(stop_t_test$conf.int[1],2)
+```
+
+The difference in prices between gas stations at stoplights and gas stations not at stoplights is between `r stop_L` and `r stop_U`, with 95% confidence. 
+
+Since the lower bound is negative and the upper bound is positive, the difference is not statistically significant, and there isn't strong evidence that proximity to stoplights affects gas prices.
+
+
+##### **Claim D: Gas stations with direct highway access charge more.**
+
+```{r, echo=FALSE}
+hwy_t_test = t.test(Price ~ Highway, data=gas_prices)
+hwy_U = round(hwy_t_test$conf.int[2],2)
+hwy_L = round(hwy_t_test$conf.int[1],2)
+```
+
+The true difference in prices between gas stations with direct highway access and those without is between `r hwy_L` and `r hwy_U`, with 95% confidence.
+
+Since both the lower and upper bound are negative, the data suggests that the true average price is lower for gas stations that have access to the highway.
+
+
+##### **Claim E: Shell charges more than all other non-Shell brands.**
+
+```{r, echo=FALSE}
+gas_prices$is_shell = ifelse(gas_prices$Brand == "Shell", "Y", "N") #creating a new variable
+
+shell_t_test = t.test(Price ~ is_shell, data=gas_prices)
+shell_U = round(shell_t_test$conf.int[2],2)
+shell_L = round(shell_t_test$conf.int[1],2)
+```
+
+The true difference in prices between Shell gas stations and non-Shell gas stations is between `r shell_L` and `r shell_U`, with 95% confidence. 
+
+Since the lower bound is negative and the upper bound is positive, there is no clear indication that Shell gas stations sell more or less than non-Shell gas stations. 
+
+
+### **Problem 2**
+
+##### **Part A: 2011 S-Class 63 AMG**
+```{r, echo=FALSE, include=FALSE}
+sclass2 = sclass %>%
+  filter(year==2011)%>%
+  filter(trim=="63 AMG")
+
+sclass2_boot = do(1000)*mean(resample(sclass2$mileage))
+sclass2_CI = confint(sclass2_boot, level=.95)
+sclass2_CI
+```
+
+The 95% bootstrap confidence interval for the average mileage of all 2011 S-Class 63 AMGs in the used market is 26253.89 to 31180.03.
+
+
+##### **Part B: 2014 S-Class 550**
+```{r, echo=FALSE}
+sclass3 = sclass %>%
+  mutate(is_black = ifelse(sclass$color=="Black","True","False"))%>%
+  filter(year==2014)%>%
+  filter(trim=="550")
+
+sclass3_boot = do(1000)*mean(resample(sclass3$is_black)=="True")
+sclass3_CI = confint(sclass3_boot, level=.95)
+#sclass3_CI
+```
+The 95% confidence interval for the proportion of all 2014 S-Class 550s that were painted black is 0.416 to .451.
+
+
+### **Problem 3**
+
+##### **Part A: Ed vs Earl**
+```{r, echo=FALSE}
+pilotA = pilot %>%
+  filter(Show == "My Name is Earl" | Show == "Living with Ed")
+
+pilotA_boot = do(1000)*{
+  mean_earl = mean(resample(pilotA$Q1_Happy[pilotA$Show=="My Name is Earl"]))
+  mean_ed = mean(resample(pilotA$Q1_Happy[pilotA$Show=="Living with Ed"]))
+  mean_earl - mean_ed
+}
+
+pilotA_CI = confint(pilotA_boot, level=.95)
+#pilotA_CI
+```
+
+The question here is whether Ed or Earl makes viewers happier or in other words, does one show get a higher mean response to the Q1_Happy question. To answer this question, I used bootstrapping to find the mean difference between ratings between the shows. One thousand resamples gave a lower bound of -0.405 and an upper bound of 0.114, with 95% confidence. A positive mean difference would indicate favorability toward "My Name is Earl," but since the bounds are negative and positive, the mean difference is not statistically significant and it cannot be determined that either show makes viewers happier at 95% confidence.
+
+
+##### **Part B: "The Biggest Loser" vs "The Apprentice: Los Angeles"**
+```{r, echo=FALSE}
+pilotB = pilot %>%
+  filter(Show == "The Biggest Loser" | Show == "The Apprentice: Los Angeles")
+
+pilotB_boot = do(1000)*{
+  mean_loser = mean(resample(pilotB$Q1_Annoyed[pilotB$Show=="The Biggest Loser"]))
+  mean_la = mean(resample(pilotB$Q1_Annoyed[pilotB$Show=="The Apprentice: Los Angeles"]))
+  mean_loser - mean_la
+}
+
+pilotB_CI = confint(pilotB_boot, level=.95)
+#pilotB_CI
+```
+
+
+Similarly, this question asks which of these two shows has a higher mean response to the Q1_Annoyed question. The same process results in the 95% confidence interval -0.518 to -0.024. The bootstrapping method takes the mean rating of "The Biggest Loser" and subtracts the mean rating of "The Apprentice: Los Angeles" so a fully negative interval implies that "The Apprentice: Los Angeles" made viewers more annoyed on average, with 95% confidence. 
+
+
+##### **Part C: "Dancing with the Stars"**
+
+```{r, echo=FALSE}
+pilotC = pilot %>%
+  filter(Show=="Dancing with the Stars")
+
+pilotC_boot = do(1000)*mean((resample(pilotC$Q2_Confusing)>=4))
+pilotC_CI = confint(pilotC_boot, level=.95)
+#pilotC_CI
+```
+
+The aim of this problem was to find the true proportion of American viewers who would find "Dancing with the Stars" confusing. The approach I took was taking bootstrapped samples and finding the mean proportion of respondents who would respond with 4 or greater for the Q2_Confusing question. This resulted in a interval from .044 to .122, with 95% confidence meaning the true proportion of American viewers who would find the show confusing is likely between 4% and 13%.
+
+
+### **Problem 4**
+```{r, echo=FALSE}
+ebay2 = ebay %>%
+  mutate(rev_ratio=rev_after/rev_before)
+
+ebay_boot = do(10000)*{
+  mean_control=mean(resample(ebay2$rev_ratio[ebay2$adwords_pause==0]))
+  mean_treatment =mean(resample(ebay2$rev_ratio[ebay2$adwords_pause==1]))
+  mean_control - mean_treatment
+}
+
+ebay_CI = confint(ebay_boot, level=.95)
+#ebay_CI
+```
+
+The question I am trying to answer is whether the extra traffic brought to Ebay by paying for search results justifies the cost of the ads themselves. The approach was to take the data from Ebay's own experiment where they paused Google advertisements and then bootstrap that data to find the true difference in mean revenue ratio from before and after for the control and treatment groups. This gave us a confidence interval from 0.014 to 0.091, with 95% confidence. This means that the true revenue ratio for the control group, or the group that continued advertisements, is higher than that of the treatment group. This is important since it indicates that the advertisements are working for Ebay since they increase revenue. Whether this justifies the cost of the ads themselves requires further analysis that considers what percentage of Ebay's budget goes to advertisements.
