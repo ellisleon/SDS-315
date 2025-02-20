@@ -8,6 +8,11 @@ output: html_document
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
+Leon Ellis
+
+lae996
+
+GitHub: https://github.com/ellisleon/SDS-315
 
 ```{r, echo=FALSE, message=FALSE, warning=FALSE}
 library(mosaic)
