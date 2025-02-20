@@ -1,0 +1,154 @@
+---
+title: "HW4"
+author: "Leon Ellis"
+date: "2025-02-18"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+library(mosaic)
+library(ggplot2)
+library(tidyverse)
+library(kableExtra)
+```
+
+
+## Problem 1: Iron Bank
+
+```{r, echo=FALSE, message=FALSE}
+bank_MC = rbinom(100000, 2021, .024)
+bank_df = data.frame(values=bank_MC)  #creates a data frame of the Monte Carlo vector to be used in ggplot
+bank_df = mutate(bank_df, greater_than = ifelse(values>=70, "yes", "no"))
+
+#p_val1 <- mean(abs(bank_MC - (2021*.024)) >= abs(70 - (2021*.024)))
+p_val1t = mean(bank_MC>=70)
+
+ggplot(bank_df)+geom_histogram(aes(x=values, fill=greater_than), show.legend=FALSE)+
+  labs(title="Distribution of Monte Carlo Simulation", x="Simulated Number of Flagged Trades", y="Frequency")+
+  scale_fill_manual(values=c("yes"="red", "no"="gray50"))
+```
+
+The null hypothesis is that 70/2021 Iron Bank trades getting flagged is plausibly consistent with random variability when the baseline rate of legal trades getting flagged is 2.4%. Using a Monte Carlo simulation results in a p-value of .00191 or a .2% likelihood that 70 or more trades would get flagged with a baseline rate of 2.4%. Using a significance level of .05 (.00191<.05), we can reject the claim that the observed rate is within reason implying that either the 2.4% rate is inaccurate or there are illegal trades being made at Iron Bank.
+
+## Problem 2: Health Inspections
+
+```{r eval=FALSE, include=FALSE}
+# p_val2 returns a different result than p_val2_test
+
+health_MC = rbinom(100000, 50, .03)
+p_val2 <- mean(health_MC>=8)
+#print(p_val2)
+
+```
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+
+health_MC2 = rbinom(100000, 50, .03)
+p_val2_test <- mean(health_MC2>=8)
+
+health_df = data.frame(values=health_MC2)  #creates a data frame of the Monte Carlo vector to be used in ggplot
+health_df = mutate(health_df, greater_than = ifelse(values>=8, "yes", "no"))
+
+ggplot(health_df)+geom_histogram(aes(x=values, fill=greater_than), show.legend=FALSE)+
+  labs(title="Distribution of Monte Carlo Simulation", x="Simulated Number of Health Code Violations", y="Frequency")+
+  scale_fill_manual(values=c("yes"="red", "no"="gray50"))
+```
+
+The null hypothesis is that 8/50 locations of Gourmet Bites in one county receiving health code violations is plausibly consistent with random variability when the baseline rate of a restaurant receiving a violation is 3%. Using a Monte Carlo simulation results in a p-value of .00013 meaning its highly unlikely that 8/50 restaurants would receive violations by chance alone. Using a significance level of .05 (.00013 < .05), we can reject the claim that the observed number of Gourmet Bites locations receiving health code violations is within reason implying that a factor unique to Gourmet Bites is contributing to their increased number of violations.
+
+## Problem 3: Evaluating Jury Selection for Bias
+
+```{r, echo=FALSE}
+total_jurors = 240
+expected_percents = c(.3,.25,.2,.15,.1)
+expected_counts = expected_percents*total_jurors
+observed = c(85, 56, 59, 27, 13)
+
+obs_chi_squared = sum((observed-expected_counts)^2/expected_counts)
+
+sim_chi_squared = do(100000)*{
+  sim_data = rmultinom(1,total_jurors,expected_percents)
+  sum((sim_data-expected_counts)^2/expected_counts)
+}
+
+p_val3 = mean(sim_chi_squared>=observed)
+#sim_chi_squared_df = data.frame(chi_squared = sim_chi_squared)
+#ggplot(sim_chi_squared_df)+geom_histogram(aes(x=chi_squared), binwidth=1)
+```
+
+The null hypothesis is that the observed proportions reflect the county's population proportions, and differences can be attribute to random variance. Using a Chi-Squared Test, we receive a p-value of .00199, in other words a .199% chance that this jury makeup could occur by chance alone. This could imply systemic bias, but it is not the only possible explanation. Like the previous problems, the rates themselves could be inaccurate. Assuming they are, however, there is still a possibility that certain groups are more willing to accept jury duty which may manifest in the way they present themselves or even if they show up to the courthouse. 
+
+## Problem 4: LLM Watermarking
+
+```{r, echo=FALSE}
+brown_original = readLines("C:\\Users\\leema\\OneDrive\\Desktop\\SDS 315\\brown_sentences.txt")
+letters = read.csv("C:\\Users\\leema\\OneDrive\\Desktop\\SDS 315\\letter_frequencies.csv")
+
+#brown = str_to_upper(brown_original)
+#brown = gsub("[^A-Za-z]", "", brown)
+
+#brown_letters <- unlist(str_split(brown, ""))
+#brown_frequencies = table(brown_letters)
+
+#brown_frequencies <- as.data.frame(brown_frequencies)
+#names(brown_frequencies) = c("Letter", "Count")
+
+#brown_frequencies = brown_frequencies %>%
+  #mutate(Probability = Count / sum(Count)) %>%
+  #select(-Count)
+
+#brown_frequencies
+#letters
+
+#chi_squared_stat = sum((brown_frequencies - letters)^2 / letters)
+```
+
+```{r, echo=FALSE}
+brown=str_to_upper(brown_original)
+
+sentences <- unlist(str_split(brown, "(?<=['.!?])\\s+"))
+
+letter_freq_per_sentence <- function(sentence) {
+  sentence_cleaned = gsub("[^A-Za-z]", "", sentence)
+  
+  cleaned_count = table(factor(strsplit(sentence_cleaned, "")[[1]], levels = letters$Letter))
+  cleaned_total = sum(cleaned_count)
+    
+  expected = letters$Probability*cleaned_total
+  observed = as.data.frame(cleaned_count)$Freq
+  
+  chi = sum((expected-observed)^2/expected)
+  
+  p_val_lfps = pchisq(chi, df=25, lower.tail=FALSE)
+  return(p_val_lfps)
+}
+
+sentences <- c(
+  "She opened the book and started to read the first chapter, eagerly anticipating what might come next.",
+  "Despite the heavy rain, they decided to go for a long walk in the park, crossing the main avenue by the fountain in the center.",
+  "The museum’s new exhibit features ancient artifacts from various civilizations around the world.",
+  "He carefully examined the document, looking for any clues that might help solve the mystery.",
+  "The students gathered in the auditorium to listen to the guest speaker’s inspiring lecture.",
+  "Feeling vexed after an arduous and zany day at work, she hoped for a peaceful and quiet evening at home, cozying up after a quick dinner with some TV, or maybe a book on her upcoming visit to Auckland.",
+  "The chef demonstrated how to prepare a delicious meal using only locally sourced ingredients, focusing mainly on some excellent dinner recipes from Spain.",
+  "They watched the sunset from the hilltop, marveling at the beautiful array of colors in the sky.",
+  "The committee reviewed the proposal and provided many points of useful feedback to improve the project’s effectiveness.",
+  "Despite the challenges faced during the project, the team worked tirelessly to ensure its successful completion, resulting in a product that exceeded everyone’s expectations."
+)
+
+p_vals4 <- sapply(sentences, letter_freq_per_sentence)
+#print(p_vals4)
+
+p_val4_table <- kable(data.frame(
+  Sentence = paste0("Sentence_", seq_along(sentences)),
+  P_Value = round(p_vals4, 3)
+), format="markdown")
+
+p_val4_table
+```
+
+The sentence made with the use of an LLM is sentence 6: "Feeling vexed after an arduous and zany day at work, she hoped for a peaceful and quiet evening at home, cozying up after a quick dinner with some TV, or maybe a book on her upcoming visit to Auckland." This is because the sentence resulted in a p-value of .036 or a 3.6% chance of the sentence being created without the aim of altering letter frequencies. This p-value can be rejected by a significance level of .05, but is also singled out as the only sentence with a p-value under 50%.
