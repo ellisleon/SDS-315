@@ -146,6 +146,19 @@ library(MatchIt)
 library(ggplot2)
 toMatch = matchit(GOTV_call ~ AGE + MAJORPTY + voted1996, method="nearest", data=turnout, ratio=5)
 matched = match.data(toMatch)
-mean(toMatch$AGE[toMatch$GOTV_call==1], na.rm=TRUE)
+mean(matched$AGE[matched$GOTV_call==1], na.rm=TRUE)
+mean(matched$AGE[matched$GOTV_call==0], na.rm=TRUE)
+
+ageTestMatched = t.test(AGE~GOTV_call==0, data=matched)
 ```
 
+The difference in mean is much more narrow now that the data is matched. The mean age for those who received the call is 58.31 compared to 58.27 for those who didn't receive the call. A t-test gives a 95% confidence interval of -2.68 to 2.76 which includes zero, so age is no longer a confounder.
+
+```{r, include = FALSE}
+Mvoted96And98 = sum(matched$voted1996 == 1 & matched$GOTV_call==1) / sum(matched$GOTV_call == 1)
+Mvoted98Only = sum(matched$voted1996 == 0 & matched$GOTV_call == 1) / sum(matched$GOTV_call == 1)
+
+Mgotv1998 = sum(matched$GOTV_call == 1 & matched$voted1998 == 1) / sum(matched$GOTV_call ==1)
+```
+
+Matching the data did not affect the proportion who voted in 1998 and did or did not receive the call. These should remain 64.78% and 44.42% respectively which results in a confidence interval for difference in proportions of 14.32% to 26.38%.
