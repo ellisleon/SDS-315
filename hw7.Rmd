@@ -1,0 +1,151 @@
+---
+title: "hw7"
+author: "Leon Ellis"
+date: "2025-04-07"
+output: html_document
+---
+
+Leon Ellis
+lae996
+Github: https://github.com/ellisleon/SDS-315
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r, echo=FALSE}
+armfold = read.csv("armfold.csv")
+turnout = read.csv("turnout.csv")
+```
+
+## Problem 1: Armfolding
+
+```{r, echo=FALSE}
+maleCount = sum(armfold$Sex == "Male")
+femaleCount = sum(armfold$Sex == "Female")
+
+maleLeftOnTop = sum(armfold$LonR_fold == 1 & armfold$Sex == "Male")/maleCount
+femaleLeftOnTop = sum(armfold$LonR_fold == 1 & armfold$Sex == "Female")/femaleCount
+
+#50/106
+#47/111
+```
+
+### A
+The number of men and the number of women included in the dataset are 106 and 111, respectively. Of the 106 men, 47.17% folded their left arm on top whereas 42.34% of women did. 
+
+### B
+The observed difference in proportions between the two groups is `r round(maleLeftOnTop - femaleLeftOnTop,3)`. 
+
+### C
+```{r, include = FALSE}
+prop.test(c(50,47),c(106,111), correct = FALSE)
+# 95% CI: -.08, .18
+```
+The function computed a 95% confidence interval for the difference in proportions as -.084 to .180.
+The formula for the standard error of difference of proportions is 
+
+sqrt(p1Hat(1-p1Hat)/N1 + p2Hat(1-p2Hat)/N2).
+
+In this instance, p1Hat is 50/106 or .472 and p2Hat is 50/111 or .423. The z value is 1.96 since it is a 95% confidence interval.
+
+```{r, echo=FALSE}
+# "hand" written
+p1n = .472*(1-.472)/106
+p2n = .423*(1-.423)/111
+
+se = sqrt(p1n + p2n)
+zse = 1.96*se
+
+mean = .472-.423
+ub = mean + zse
+lb = mean -zse
+```
+
+### D
+If we were to repeat this experiment many times, we would expect that 95% of the confidence intervals would contain the true difference in population proportions.
+
+### E
+The standard error represents the combined variability of the two proportions from sample to sample by random chance alone assuming there's no true difference in population proportions. Since a larger standard error indicates less certainty in one's estimate, the standard error measures the precision of estimates. 
+
+### F
+The sampling distribution represents the distribution of the estimates for the difference in population proportions after repeated sampling. If we are repeatedly sampling, the sample proportions would change which would in turn change the standard error as well as difference in sample proportions. The population proportions would remain the same as well as the confidence interval. If we are using bootstrapping, the number of men or women for each sample would remain the same.
+
+### G
+The mathematical theorem that justifies the use of the normal distribution is the Central Limit Theorem. The basic idea of the Central Limit Theorem is that with enough independent data points, the distribution of an average looks approximately normal. 
+
+A more precise definition is that if we were to take enough independent samples from a wider population and compute the average of the samples, we would get XbarN which can be approximated with mean, mu, and standard deviation, sigma / sqrt(N).
+
+### H 
+Supposing the 95% confidence interval for the difference in proportions was -.01 and .30, it would be reasonable to believe that there is no sex difference in arm folding since zero is included in the interval. In other words, there is a possibility, at 95% confidence, that the true difference in proportions is zero. 
+
+### I
+If we were to repeat this experiment many times with different random samples of university students, we should expect to see the same true difference in proportions since methods like bootstrapping are used to simulate real sample variability. We would however see different confidence intervals for each sample. 95% of these sample confidence intervals should include the true difference in proportions.
+
+## Problem 2: Get out the vote.
+
+### A
+```{r, include = FALSE}
+calledAndVoted = sum(turnout$GOTV_call == 1 & turnout$voted1998 == 1)/ sum(turnout$GOTV_call==1)
+notCalledAndVoted = sum(turnout$GOTV_call == 0 & turnout$voted1998 == 1)/ sum(turnout$GOTV_call==0)
+sum(turnout$GOTV_call == 1)
+# C&V = 160 /247
+# nC&V = 4701 / 10582
+prop.test(c(160, 4701), c(247, 10582), correct = FALSE)
+```
+
+Of those who did receive the "Get out to vote" call, 64.78% voted in 1998. Of those who did not receive the call, only 44.42% voted. The 95% confidence interval for difference in proportions is 14.32% to 26.38%.
+
+### B
+```{r, include = FALSE}
+# relationship between 98 and 96 voters
+
+voted96And98 = sum(turnout$voted1996 == 1 & turnout$GOTV_call==1) / sum(turnout$GOTV_call == 1)
+voted98Only = sum(turnout$voted1996 == 0 & turnout$GOTV_call == 1) / sum(turnout$GOTV_call == 1)
+#voted96Only = sum(turnout$voted1996 == 1 & turnout$voted1998 == 0) / sum(turnout$voted1998)
+#votedNeither = sum(turnout$voted1996 == 0 & turnout$voted1998 == 0) / sum(turnout$voted1998)
+sum(turnout$GOTV_call == 1) #247
+# 176, 71
+
+prop.test(c(176, 71), c(247, 247))
+
+
+```
+
+One confounder to consider is whether the people who voted in the 1996 election were more likely to receive the "Get out to vote" call. The data shows that of the people who received the call, 71.26% had voted in the previous election whereas only 28.74% had not. This is of concern when determining the efficacy of the campaign since people who have a history voting are more likely to vote again. The 95%  confidence interval for difference in proportions is .341 to .509 which does not include zero so it can be concluded that whether someone voted in 1996 led them to being more likely to receive the call. 
+
+```{r, include=FALSE}
+# relationship with age
+#avgAgeGOTV = sum(turnout$AGE) / sum(turnout$GOTV_call == 0)
+avgAgeGOTV = mean(turnout$AGE[turnout$GOTV_call==1])
+avgAgeNoCall = mean(turnout$AGE[turnout$GOTV_call==0])
+
+ageTest = t.test(AGE~GOTV_call==0, data=turnout)
+```
+
+Another important confounder is age. The average age for people who received the call is 58 compared to 49 for those who did not receive the call. Younger people historically are less likely to vote. A t-test for difference in means finds the 95% confidence interval to be 6.37 to 11.40 indicating that the true difference in age is not zero. 
+
+```{r, include=FALSE}
+partyMember = sum(turnout$MAJORPTY == 1 & turnout$GOTV_call==1) / sum(turnout$GOTV_call == 1)
+nonPartyMember = sum(turnout$MAJORPTY == 0 & turnout$GOTV_call==1) / sum(turnout$GOTV_call == 1)
+# 198, 49
+sum(turnout$GOTV_call == 1)
+#sum(turnout$MAJORPTY == 1)
+
+prop.test(c(198, 49), c(247, 247))
+
+```
+
+The last confounding variable is party affiliation. Specifically, it is of interest whether affiliation with either major party makes people more likely to receive the call. The 95% confidence interval for difference in proportions for party affiliation and whether they received the call is .529 to .678 indicating that people affiliated to a major party are more likely to receive the phone call.
+
+### C
+
+```{r, include=FALSE}
+library(MatchIt)
+library(ggplot2)
+toMatch = matchit(GOTV_call ~ AGE + MAJORPTY + voted1996, method="nearest", data=turnout, ratio=5)
+matched = match.data(toMatch)
+mean(toMatch$AGE[toMatch$GOTV_call==1], na.rm=TRUE)
+```
+
