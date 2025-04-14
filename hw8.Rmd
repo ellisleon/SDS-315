@@ -1,0 +1,132 @@
+---
+title: "HW8"
+author: "Leon Ellis"
+date: "2025-04-14"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### Problem 1: Regression Warm Up
+
+
+
+#### A
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+library(ggplot2)
+library(mosaic)
+
+creat = read.csv("creatinine.csv")
+
+ggplot(creat, aes(x=age, y=creatclear))+
+         geom_point()+
+         geom_smooth(method='lm')+
+         labs(x="Age", y="Creatinine Clearance Rate (mL/min)")
+
+#lm0 = lm(age ~ creatclear, data=creat)
+#coef(lm0) %>% round(0)
+#Intercept: 172, creatclear: -1
+
+# 172-55=117
+
+```
+
+At 55-years-old, we can expect to see a creatinine clearance rate of 117 mL/minute. This number is found by fitting a linear regression model to the data which results in an intercept of 172 and a rate of -1. By multiplying this rate by 55 years and subtracting from the intercept, we get 117 mL/minute.
+
+#### B
+
+The rate of -1 from the linear regression model is measured in mL/minute. This means that for each year of someone's life, their creatinine clearance rate lowers by one mL/minute.
+
+#### C
+
+```{r, echo=FALSE}
+
+forty_actual = 135
+sixty_actual = 112
+
+forty_predicted = 172 - 40
+sixty_predicted = 172 - 60
+
+forty_residual = forty_actual - forty_predicted
+sixty_residual = sixty_actual - sixty_predicted
+```
+
+When comparing a forty-year-old with a creatinine clearance rate of 135 to a sixty-year-old with a rate of 112 to determine who's healthier for their age, we need to look at residuals or the predicted outcome subtracted from the actual outcome. For the forty-year-old, this value is 3 whereas the sixty-year-old has no residual -- their results match the estimate. For their age, the forty-year-old has a healthier creatinine clearance rate.
+
+
+### Problem 2: Modeling Disease Growth
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+covid = read.csv("covid.csv")
+
+ggplot(covid)+
+  geom_line(data=filter(covid, country=="Italy"), aes(x=days_since_first_death, y=log(deaths), color="Italy"))+
+  #geom_abline(intercept = 1.019, slope = 0.183, color='blue')+
+  geom_line(data=filter(covid, country=="Spain"), aes(x=days_since_first_death, y=log(deaths), color="Spain"))+
+  #geom_abline(intercept = .465, slope = 0.276, color='red')
+  labs(color="country", x="Days Since First Death",y="Deaths")+
+  scale_color_manual(
+    name = "Country",
+    values = c("Italy" = "red", "Spain" = "blue")
+  )
+
+covid_italy = filter(covid, country=="Italy")
+covid_spain = filter(covid, country=="Spain")
+
+lm_italy = lm(log(deaths) ~ days_since_first_death, data=covid_italy)
+coef(lm_italy) #1.019, .183
+
+lm_spain = lm(log(deaths) ~ days_since_first_death, data=covid_spain)
+coef(lm_spain) #.465, .276
+
+italy_boot = do(1000)*{
+  resampled_it = resample(covid_italy)
+  coef(lm(log(deaths) ~ days_since_first_death, data=resampled_it))[2]
+}
+
+spain_boot = do(1000)*{
+  resampled_es = resample(covid_spain)
+  coef(lm(log(deaths) ~ days_since_first_death, data=resampled_es))[2]
+}
+
+quantile(italy_boot$days_since_first_death, c(.025,.975))
+quantile(spain_boot$days_since_first_death, c(.025,.975))
+
+(3.3+4.4)/2
+
+
+doubling_time_italy = log(2)/.235 #3.788
+doubling_time_spain = log(2)/.319 #2.511
+
+print(doubling_time_italy)
+print(doubling_time_spain)
+
+(2.2+2.9)/2
+```
+
+The 95% confidence interval for the COVID growth rate in Italy is .158 to .207 for a mean of .183. This results in a doubling time interval of 3.3 to 4.4 days for a mean of 3.9 days.
+
+For Spain, the 95% confidence bootstrap interval is .235 to .319 for a mean of .277. This results in a doubling time interval of 2.2 to 2.9 days for a mean of 2.6 days.
+
+### Problem 3: Price Elasticity of Demand
+
+```{r, echo=FALSE}
+milk = read.csv("milk.csv")
+
+ggplot(milk) +
+  geom_point(aes(x=price, y=sales))+
+  labs(x="Price", y="Sales")
+
+lm_milk = lm(log(sales) ~ log(price), data=milk)
+coef(lm_milk)
+
+milk_boot = do(10000)*{
+  resampled = resample(milk)
+  coef(lm(log(sales) ~ log(price), data=resampled))[2]
+}
+quantile(milk_boot$log.price., c(.025,.975))
+```
+
+The 95% confidence bootstrapped interval for the price elasticity of milk is -1.77 to -1.46. This was found by running 10,000 bootstrap simulations with replacement and calculating the price elasticity for each resample. Without bootstrapping, the estimate is -1.62.
