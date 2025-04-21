@@ -1,0 +1,151 @@
+---
+title: "Homework 9"
+author: "Leon Ellis"
+date: "2025-04-21"
+output: html_document
+---
+
+Leon Ellis | lae996 | https://github.com/ellisleon/SDS-315
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### Problem 1: Manufacturing Flaws in Circuit Boards
+
+```{r, warning=FALSE, include=FALSE, message=FALSE}
+library(ggplot2)
+library(kableExtra)
+library(moderndive)
+library(effectsize)
+solder = read.csv("solder.csv")
+red = read.csv("redlining.csv")
+```
+
+#### Part A.
+```{r, echo=FALSE}
+ggplot(solder, aes(x=Opening, y=skips))+
+  geom_boxplot()+
+  labs(x="Size of Opening on Solder Gun", y="Number of Skips", title="Relationship Between Size and Number of Skips")
+
+ggplot(solder, aes(x=Solder, y=skips))+
+  geom_boxplot()+
+  labs(x="Thickness of Alloy", y="Number of Skips", title="Relationship Between Thickness of Alloy and Number of Skips")
+```
+
+
+
+#### Part B.
+```{r, echo=FALSE}
+lm1 = lm(skips ~ Opening * Solder, data=solder)
+#coef(lm1)
+
+coef_table_lm1 <- cbind(
+  Estimate = coef(lm1),
+  confint(lm1, level = 0.95)
+)
+
+coef_df_lm1 <- as.data.frame(coef_table_lm1)
+#coef_df_lm1
+kbl(coef_df_lm1, digits=2, col.names = c("Term", "Estimate", "Lower", "Upper"))%>%
+  kable_styling(bootstrap_options = c("striped", "hover"), full_width = FALSE)
+```
+
+#### Part C. 
+The baseline number of skips for a large opening with a thick solder is .39. 
+The interaction effect for thick solder and a medium opening is 2.41 skips.
+The interaction effect for thick solder and a small opening is 5.31 skip. 
+The main effect for thin solder is 2.28 skips. This is the effect of thin solder in isolation.
+The interaction effect for thin solder with a medium opening is -.74 skips.
+The interaction effect for thin solder on a small opening is 9.65 skips.
+
+#### Part D.
+
+To minimize the number of skips, it is best to use a combination of a medium opening and thin solder since it has a negative relationship on skips.
+
+
+### Problem 2: Grocery Store Prices
+
+#### Part A.
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+library(dplyr)
+groc = read.csv("groceries.csv")
+
+groc = groc %>%
+  mutate(store_city=paste(store_city = Store, City, sep=", "))
+
+
+average_prices = groc %>%
+  group_by(store_city) %>%
+  summarize(avg_price = mean(Price, na.rm = TRUE))
+
+ggplot(average_prices, aes(x=avg_price, y=reorder(store_city, avg_price)))+
+  geom_bar(stat="identity")+
+  labs(title="Average Price of Goods Across Different Stores", x="Average Price", y="Store")
+```
+
+#### Part B.
+```{r, echo=FALSE}
+goods = groc %>%
+  distinct(Product, store_city)%>%
+  group_by(Product) %>%
+  summarize(store_count=n())
+
+ggplot(goods, aes(x=store_count, y=reorder(Product, store_count)))+
+  geom_bar(stat="identity")+
+  labs(title="Number of Stores Selling Various Products", x="Number of Stores Selling Product", y="Product")
+```
+
+#### Part C. 
+
+```{r, echo=FALSE}
+lm2c = lm(Price ~ Product + Type, data=groc)
+#summary(lm2c)
+#confint(lm2c, level=.95)["TypeGrocery",]
+```
+Compared with ordinary grocery stores (like Albertsons, HEB, or Krogers), convenience stores charge somewhere between
+.41 and .92 dollars more for the same product.” 
+
+#### Part D. 
+
+```{r, echo=FALSE}
+lm2d = lm(Price ~ Product + Store, data = groc)
+#summary(lm2d)
+#confint(lm2d, level=.95)
+```
+
+The two stores that seem to charge the least when comparing the same product are Walmart and Kroger fresh Fare. Wheatsville Food Co-Op and Whole Foods seem to charge the most when comparing the same product.
+
+#### Part E.
+
+With Albertson's as the baseline, H-E-B charges $0.66 less for the same product whereas Central Market charges $0.57 less. This difference of about nine cents does not seem so significant when comparing other similar stores. For example, Kroger charges $0.70 less than Albertson's for the same product on average. On the contrary, a more expensive store like Whole Foods charges $0.36 more for the same product. 
+
+#### Part F.
+
+```{r, echo=FALSE}
+groc2 = groc %>%
+  mutate(Income10k = round(Income/10000, 0))
+
+lm2f = lm(Price ~ Product + Income10k, data=groc2)
+#summary(lm2f)
+# -.015
+#get_regression_table(lm2f, conf.level = 0.95, digits=2)
+#m2f = get_regression_table(lm2f, conf.level = 0.95, digits=2)
+
+#standardize_parameters(lm2f)
+
+```
+
+Using a regression model, I found that people in lower incomes areas tend to pay $0.02 less for the same. A one-standard deviation increase in the income of a ZIP code seems to be associated with a -.04 standard-deviation change in the price that consumers in that ZIP code expect to pay for the same product.
+
+### Problem 3: Redlining
+
+A. True - The trend line in Figure A1 shows a positive relationship between the percentage of a community's residents that are minorities and the number of FAIR policies per 100 housing units.
+
+B. False - The 95% confidence interval for this interaction is -.016 to .912. Since this includes zero, we cannot confidently conclude that there is an interaction occurring.
+
+C. False - Figure C1 shows both a higher intercept and steeper slope for high fire risk homes, but the confidence interval once again includes both positive and negative figures, so the relationship is not definitive.
+
+D. False - Both the models that do and do not control for income show a positive relationship between minority percentage and FAIR policies.
+
+E. True - The multiple linear regression model has a 95% confidence interval of .003 to .014  when income, fire risk, and housing age are controlled for.
